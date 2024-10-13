@@ -1,0 +1,116 @@
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+# Step 1: Load the CSV file (update the file path as needed)
+file_path = 'path_to_your_file/Haryana_final_data.csv'
+df = pd.read_csv(file_path)
+
+# Step 2: Filter and merge the data for INC+ and BJP
+inc_plus_data = df[df['Party'] == 'Indian National Congress'][['Constituency_Name', 'Vote_Share_Percentage', 'Area']]
+bjp_data = df[df['Party'] == 'Bharatiya Janata Party'][['Constituency_Name', 'Vote_Share_Percentage', 'Area']]
+
+# Merge the two datasets on 'Constituency_Name' and 'Area'
+merged_data = pd.merge(inc_plus_data, bjp_data, on=['Constituency_Name', 'Area'], suffixes=('_INC', '_BJP'))
+
+# Get available areas for the dropdown
+available_areas = merged_data['Area'].unique()
+
+# Step 3: Create the initial scatter plot
+fig = go.Figure()
+
+# Step 4: Add scatter traces for each area
+for area in available_areas:
+    area_filtered_data = merged_data[merged_data['Area'] == area]
+    
+    # Add scatter trace for each area
+    fig.add_trace(go.Scatter(
+        x=area_filtered_data['Vote_Share_Percentage_INC'], 
+        y=area_filtered_data['Vote_Share_Percentage_BJP'],
+        mode='markers',
+        marker=dict(size=10),
+        name=area,  # Area name as legend
+        text=area_filtered_data['Constituency_Name'],  # Hover text showing constituency
+        hovertemplate=(
+            "Constituency: %{text}<br>"
+            "INC+ Vote Share: %{x}%<br>"
+            "BJP Vote Share: %{y}%<extra></extra>"
+        )
+    ))
+
+# Step 5: Create a dropdown to filter by area
+dropdown_buttons = [
+    dict(label='All Areas', method='update', args=[{'visible': [True] * len(available_areas)}]),
+] + [
+    dict(label=area, method='update', args=[{'visible': [area == a for a in available_areas]}])
+    for area in available_areas
+]
+
+# Step 6: Create sliders for X and Y axis limits (both min and max)
+x_min_slider = dict(
+    active=0,
+    currentvalue={"prefix": "X-axis Min: "},
+    pad={"t": 50},
+    steps=[{'method': 'relayout', 'label': f'{i}', 'args': [{'xaxis.range[0]': i}]} for i in range(0, 101, 10)]
+)
+
+x_max_slider = dict(
+    active=0,
+    currentvalue={"prefix": "X-axis Max: "},
+    pad={"t": 70},
+    steps=[{'method': 'relayout', 'label': f'{i}', 'args': [{'xaxis.range[1]': i}]} for i in range(10, 101, 10)]
+)
+
+y_min_slider = dict(
+    active=0,
+    currentvalue={"prefix": "Y-axis Min: "},
+    pad={"t": 90},
+    steps=[{'method': 'relayout', 'label': f'{i}', 'args': [{'yaxis.range[0]': i}]} for i in range(0, 101, 10)]
+)
+
+y_max_slider = dict(
+    active=0,
+    currentvalue={"prefix": "Y-axis Max: "},
+    pad={"t": 110},
+    steps=[{'method': 'relayout', 'label': f'{i}', 'args': [{'yaxis.range[1]': i}]} for i in range(10, 101, 10)]
+)
+
+# Step 7: Update layout with dropdown menu and sliders on the right
+fig.update_layout(
+    title="Scatterplot of INC+ vs BJP Vote Share",
+    xaxis_title="INC+ Vote Share (%)",
+    yaxis_title="BJP Vote Share (%)",
+    height=600,
+    width=700,  # Make the chart more square-like
+    updatemenus=[
+        {
+            'buttons': dropdown_buttons,
+            'direction': 'down',
+            'showactive': True,
+            'x': 1.3,  # Adjust the position of the dropdown to the right
+            'y': 1.1
+        },
+        {
+            'buttons': [
+                dict(
+                    args=["type", "scatter"],
+                    label="Download SVG",
+                    method="restyle"
+                ),
+            ],
+            'direction': "down",
+            'x': 1.3,  # Position the download button
+            'y': -0.3
+        },
+    ],
+    sliders=[
+        x_min_slider,
+        x_max_slider,
+        y_min_slider,
+        y_max_slider
+    ]
+)
+
+# Step 8: Show the plot
+fig.show()
